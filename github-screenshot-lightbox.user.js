@@ -197,7 +197,7 @@
     if (!hrefIsRenderable && !imageIsRenderable) {
       return null;
     }
-    const srcUrl = hrefIsRenderable ? hrefUrl : imageUrl;
+    const srcUrl = imageIsRenderable ? imageUrl : hrefUrl;
     if (!srcUrl) {
       return null;
     }
