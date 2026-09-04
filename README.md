@@ -1,6 +1,6 @@
-# GitHub Screenshot Lightbox
+# GitHub Image Preview
 
-![GitHub Screenshot Lightbox demo](media/lightbox-demo.gif)
+![GitHub Image Preview demo](media/lightbox-demo.gif)
 
 A tiny browser extension and userscript that opens GitHub issue, pull request, and comment screenshots in an in-page lightbox instead of a new tab.
 
