@@ -2,6 +2,8 @@
 
 An in-page image viewer for GitHub repository README pages, issues, pull requests, reviews, and comments. It turns screenshots, GIFs, and other image attachments into a focused lightbox while keeping the surrounding document or discussion available in the browser tab.
 
+![GitHub Image Preview demo](media/demo.gif)
+
 The project ships as both a Manifest V3 Chromium extension and a standalone userscript. The checked-in bundle has no runtime dependencies and can be installed without a build step.
 
 ## What It Does
