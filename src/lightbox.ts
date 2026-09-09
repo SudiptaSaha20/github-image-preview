@@ -423,13 +423,21 @@ export class GitHubScreenshotLightbox {
       this.zoomAt(this.state.zoom - 0.5);
     } else if (action === "zoom-reset") {
       this.resetZoom();
-    } else if (target && target.closest(".ghslb-image") && !this.state.didPan) {
+    } else if (target && target.closest(".ghslb-image")) {
+      if (this.state.didPan) {
+        return;
+      }
+
       if (this.state.zoom > MIN_ZOOM) {
         this.resetZoom();
       } else {
         this.zoomAt(2.5, event);
       }
-    } else if (target && target.classList.contains("ghslb-viewport") && !this.state.didPan) {
+    } else if (
+      target &&
+      (target.classList.contains("ghslb-viewport") || target.classList.contains("ghslb-backdrop")) &&
+      !this.state.didPan
+    ) {
       this.closeLightbox();
     }
   };
@@ -503,6 +511,10 @@ export class GitHubScreenshotLightbox {
 
   private handleWheel = (event: WheelEvent): void => {
     if (!this.state.root || this.state.root.hidden || !this.state.nodes) {
+      return;
+    }
+
+    if (!event.ctrlKey) {
       return;
     }
 

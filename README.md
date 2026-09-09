@@ -29,7 +29,7 @@ The project ships as both a Manifest V3 Chromium extension and a standalone user
 ### Zooming and panning
 
 - Clicks the image to zoom in around the pointer, then click again to reset.
-- Zooms with the mouse wheel around the cursor position.
+- Zooms with Ctrl + mouse wheel around the cursor position.
 - Provides zoom in, zoom out, and reset controls with a live percentage indicator.
 - Supports `+`, `-`, and `0` keyboard shortcuts.
 - Supports zoom levels from 100% through 800%.
@@ -75,11 +75,11 @@ Small avatars and other images that do not look like screenshots are ignored to 
 | Previous image | Left arrow, previous button, or swipe right |
 | Next section | Shift + Right arrow or next section button |
 | Previous section | Shift + Left arrow or previous section button |
-| Zoom in | Click the image, mouse wheel up, `+`, `=`, or zoom-in button |
-| Zoom out | Mouse wheel down, `-`, or zoom-out button |
+| Zoom in | Click the image, Ctrl + mouse wheel up, `+`, `=`, or zoom-in button |
+| Zoom out | Ctrl + mouse wheel down, `-`, or zoom-out button |
 | Reset zoom | Click a zoomed image, press `0`, or use the reset button |
 | Pan | Drag the image while zoomed in |
-| Close | `Esc`, close button, or empty viewport click |
+| Close | `Esc`, close button, or click outside the image |
 | Open normally | Cmd-click, Ctrl-click, Shift-click, Alt-click, or middle-click |
 
 ## Installation
