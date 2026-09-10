@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GitHub Image Preview",
-  "version": "1.1.0",
+  "version": "1.0.0",
   "description": "In-page lightbox viewer for images in GitHub READMEs, issues, pull requests, reviews, and comments. Works on github.com out of the box, with optional per-site control for GitHub Enterprise instances.",
   "icons": {
     "16": "icons/icon16.png",
