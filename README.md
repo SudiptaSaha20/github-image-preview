@@ -23,16 +23,44 @@ place in the conversation.
 
 ## Install
 
-This extension is distributed as an unpacked Chrome extension.
+The extension is installed manually from a folder. You do not need to run a
+setup program, install Node.js, or use the command line.
 
-1. Download or unzip this folder somewhere on your computer.
-2. Open `chrome://extensions` in Chrome.
-3. Turn on **Developer mode**.
-4. Click **Load unpacked** and select the `github-image-preview` folder.
-5. Open or refresh a GitHub README, issue, pull request, review, or comment
-   thread.
+### 1. Get the extension folder
 
-That is it. `github.com` is enabled out of the box.
+Download the project as a ZIP file and extract it, or copy the project folder
+to a permanent location on your computer. If you downloaded a ZIP file, make
+sure you extract it first; Chrome cannot install the extension directly from a
+ZIP file.
+
+You should be able to open the folder and see `manifest.json` directly inside
+it. If you see another folder first, open that folder when selecting it in the
+next step.
+
+### 2. Add it to Chrome
+
+1. Open Chrome and go to `chrome://extensions`.
+2. Turn on **Developer mode** using the switch in the upper-right corner.
+3. Click **Load unpacked**.
+4. Select the folder that contains `manifest.json`, then click **Select
+  Folder**.
+5. Keep the extension enabled in the list. You can optionally pin it from the
+  puzzle-piece **Extensions** menu.
+
+### 3. Use it on GitHub
+
+Open a GitHub README, issue, pull request, review, or comment thread. If one
+was already open, refresh the page after installing the extension. Click an
+image to open it in the viewer.
+
+`github.com` is enabled automatically. For GitHub Enterprise, follow the
+[GitHub Enterprise](#github-enterprise) instructions below.
+
+### If Chrome reports an error
+
+Check that you selected the folder containing `manifest.json`, not the ZIP
+file or its parent folder. If the extension was already installed, click its
+**Reload** button on `chrome://extensions`, then refresh the GitHub page.
 
 ## Use it
 
