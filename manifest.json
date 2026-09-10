@@ -1,12 +1,18 @@
 {
   "manifest_version": 3,
   "name": "GitHub Image Preview",
-  "version": "0.0.1",
-  "description": "In-page lightbox viewer for GitHub screenshots and image attachments.",
+  "version": "1.0.0",
+  "description": "In-page lightbox viewer for images in GitHub READMEs, issues, pull requests, reviews, and comments.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "content_scripts": [
     {
       "matches": ["https://github.com/*"],
-      "js": ["github-image-preview.user.js"],
+      "css": ["styles.css"],
+      "js": ["content.js"],
       "run_at": "document_idle"
     }
   ]
