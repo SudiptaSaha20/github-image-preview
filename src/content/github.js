@@ -1,12 +1,8 @@
-/*
- * GHIP.github — finds eligible images/links on the current GitHub page and
- * groups them into navigable sections (README, comments, reviews, ...).
- */
 window.GHIP = window.GHIP || {};
 
 (function (NS) {
   "use strict";
-  if (NS.collectItems) return; // already initialized
+  if (NS.collectItems) return;
 
   const { IMAGE_EXT_RE, SECTION_SELECTOR } = NS.CONSTANTS;
   const githubImageHostTest = NS.githubImageHostTest;
@@ -14,14 +10,19 @@ window.GHIP = window.GHIP || {};
   function looksLikeAvatarOrIcon(el) {
     if (!el) return false;
     const cls = (el.className && el.className.baseVal) || el.className || "";
-    if (typeof cls === "string" && /\bavatar\b|\bemoji\b|\boctinit\b|\bicon\b/i.test(cls)) return true;
+    if (
+      typeof cls === "string" &&
+      /\bavatar\b|\bemoji\b|\boctinit\b|\bicon\b/i.test(cls)
+    )
+      return true;
     const w = el.getAttribute && (el.getAttribute("width") || "");
     const h = el.getAttribute && (el.getAttribute("height") || "");
     const nw = parseInt(w, 10);
     const nh = parseInt(h, 10);
     if ((nw && nw <= 32) || (nh && nh <= 32)) return true;
     const rect = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
-    if (rect && rect.width > 0 && rect.width <= 32 && rect.height <= 32) return true;
+    if (rect && rect.width > 0 && rect.width <= 32 && rect.height <= 32)
+      return true;
     return false;
   }
 
@@ -31,18 +32,24 @@ window.GHIP = window.GHIP || {};
     return null;
   }
 
+  function isHidden(el) {
+    const style = window.getComputedStyle(el);
+    return style.display === "none" || style.visibility === "hidden";
+  }
+
   function findEligibleTargets(root) {
     const nodes = root.querySelectorAll("img, a[href]");
     const results = [];
     nodes.forEach((el) => {
       const url = extractUrlFromElement(el);
       if (!url) return;
+      if (isHidden(el)) return;
       if (!githubImageHostTest(url)) return;
       if (el.tagName === "IMG" && looksLikeAvatarOrIcon(el)) return;
       if (el.tagName === "A") {
-        // Skip anchors wrapping avatars (profile pictures link to profiles)
         const img = el.querySelector("img");
-        if (img && looksLikeAvatarOrIcon(img) && el.children.length === 1) return;
+        if (img && el.children.length === 1)
+          return;
       }
       results.push(el);
     });
@@ -86,10 +93,11 @@ window.GHIP = window.GHIP || {};
   function sectionLabel(sectionEl, idx) {
     if (!sectionEl) return "Page";
     if (sectionEl.matches("article#readme")) return "README";
-    const custom = sectionEl.getAttribute && sectionEl.getAttribute("data-ghip-group");
+    const custom =
+      sectionEl.getAttribute && sectionEl.getAttribute("data-ghip-group");
     if (custom) return custom;
     const author = sectionEl.querySelector(
-      ".author, [data-testid='comment-viewer-outer-box'] a[data-hovercard-type='user'], strong a"
+      ".author, [data-testid='comment-viewer-outer-box'] a[data-hovercard-type='user'], strong a",
     );
     const authorName = author ? author.textContent.trim() : "";
     if (sectionEl.matches(".TimelineItem")) {
@@ -102,25 +110,34 @@ window.GHIP = window.GHIP || {};
     return `Section ${idx}`;
   }
 
-  /**
-   * Scans the document for eligible images/links and builds an ordered,
-   * grouped collection describing everything the lightbox can navigate.
-   */
   function collectItems() {
     const targets = findEligibleTargets(document.body);
-    const sectionMap = new Map(); // sectionEl (or document.body) -> { sectionEl, items: [] }
+    const sectionMap = new Map();
     const order = [];
 
     targets.forEach((el) => {
-      const url = extractUrlFromElement(el);
       const sectionEl = nearestSection(el);
-      const key = sectionEl || document.body;
+      if (!sectionEl) return;
+
+      const url = extractUrlFromElement(el);
+      const key = sectionEl;
       if (!sectionMap.has(key)) {
         order.push(key);
-        sectionMap.set(key, { sectionEl, items: [] });
+        sectionMap.set(key, { sectionEl, items: [], seenUrls: new Set() });
       }
+
+      const entry = sectionMap.get(key);
+      let absUrl;
+      try {
+        absUrl = new URL(url, location.href).href;
+      } catch (e) {
+        absUrl = url;
+      }
+      if (entry.seenUrls.has(absUrl)) return;   // <-- skip duplicate
+      entry.seenUrls.add(absUrl);
+
       const rawName = deriveCaption(el, url);
-      sectionMap.get(key).items.push({
+      entry.items.push({
         el,
         url,
         rawName,
@@ -141,7 +158,12 @@ window.GHIP = window.GHIP || {};
     const flat = [];
     sections.forEach((sec, sIdx) => {
       sec.items.forEach((item, iIdx) => {
-        flat.push({ ...item, section: sec, sectionIndex: sIdx, indexInSection: iIdx });
+        flat.push({
+          ...item,
+          section: sec,
+          sectionIndex: sIdx,
+          indexInSection: iIdx,
+        });
       });
     });
 

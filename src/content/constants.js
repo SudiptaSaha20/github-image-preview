@@ -1,12 +1,8 @@
-/*
- * GHIP.constants — shared regexes, tunables, and the URL eligibility test.
- * Loaded first; every other content module reads from window.GHIP.
- */
 window.GHIP = window.GHIP || {};
 
 (function (NS) {
   "use strict";
-  if (NS.CONSTANTS) return; // already initialized (e.g. injected twice)
+  if (NS.CONSTANTS) return;
 
   const IMAGE_EXT_RE = /\.(apng|avif|bmp|gif|jpeg|jpg|png|svg|webp)(\?[^#]*)?(#.*)?$/i;
 

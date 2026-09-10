@@ -1,15 +1,10 @@
-/*
- * GHIP.clampPan / touchDist / touchMidpoint — pure geometry helpers used by
- * the lightbox for zoom, pan-bounds clamping, and pinch-to-zoom.
- */
 window.GHIP = window.GHIP || {};
 
 (function (NS) {
   "use strict";
-  if (NS.clampPan) return; // already initialized
+  if (NS.clampPan) return;
 
   function clampPan(tx, ty, scale, containerRect, imgNaturalRect) {
-    // imgNaturalRect: the image's rendered (unscaled, base-fit) width/height
     const scaledW = imgNaturalRect.width * scale;
     const scaledH = imgNaturalRect.height * scale;
     const maxX = Math.max(0, (scaledW - containerRect.width) / 2);

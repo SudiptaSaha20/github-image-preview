@@ -1,11 +1,8 @@
-/*
- * GHIP.ICONS — inline SVG markup for the lightbox's control buttons.
- */
 window.GHIP = window.GHIP || {};
 
 (function (NS) {
   "use strict";
-  if (NS.ICONS) return; // already initialized
+  if (NS.ICONS) return;
 
   NS.ICONS = {
     close:

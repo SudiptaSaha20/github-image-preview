@@ -1,9 +1,3 @@
-/*
- * GHIP bootstrap — the only module with a real "run once" guard. The other
- * content modules just (re)populate window.GHIP properties, which is
- * harmless if this script is ever injected more than once; only the actual
- * side effects here (DOM creation, event listeners) must run exactly once.
- */
 (function () {
   "use strict";
   if (window.__ghImagePreviewInstalled) return;
@@ -12,8 +6,7 @@
   const NS = window.GHIP;
   const { STORAGE_KEY } = NS.CONSTANTS;
 
-  // Per-site enable/disable, set via the popup or options page.
-  const state = { enabled: true }; // optimistic default until storage responds
+  const state = { enabled: true };
 
   function refreshEnabledState() {
     if (!(window.chrome && chrome.storage && chrome.storage.local)) return;

@@ -6,7 +6,7 @@
  *  - github.com is "builtin" — always injected via the static content_script
  *    entry in manifest.json; the enabled flag just turns it on/off at runtime.
  *  - Any other ("custom") hostname requires an explicit host-permission grant
- *    (requested from the popup/options page, which runs with a user gesture)
+ *    (requested from the options page, which runs with a user gesture)
  *    plus a dynamically registered content script, since manifest.json only
  *    declares github.com statically.
  */
@@ -34,6 +34,12 @@ async function setSites(sites) {
 chrome.runtime.onInstalled.addListener(async () => {
   const sites = await getSites();
   await setSites(sites);
+});
+
+// No popup on the toolbar icon anymore — clicking it just opens the
+// options page, which already has full "manage sites" functionality.
+chrome.action.onClicked.addListener(() => {
+  chrome.runtime.openOptionsPage();
 });
 
 async function addCustomSite(hostname) {

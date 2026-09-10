@@ -225,7 +225,29 @@
   flex-shrink: 0;
 }
 
-/* Responsive adjustments for narrow screens */
+.ghip-toast {
+  position: absolute;
+  bottom: 5.5rem;
+  left: 50%;
+  transform: translate(-50%, 8px);
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+  z-index: 10;
+}
+.ghip-toast-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+.ghip-toast-error {
+  background: rgba(180, 40, 40, 0.9);
+}
+
 @media (max-width: 640px) {
   .ghip-imgwrap {
     width: 96vw;

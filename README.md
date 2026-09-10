@@ -48,7 +48,8 @@ Click any eligible image or image link to open the viewer.
 | `+` / `−` / `0` | Zoom in, zoom out, or reset zoom |
 | Drag while zoomed | Pan around the image |
 | Swipe left or right | Navigate on touch devices |
-| `Esc`, `×`, or click outside | Close the viewer |
+| `Ctrl` / `Cmd` + `C` | Copy the current image to the clipboard |
+| `Esc` or `×` | Close the viewer |
 
 Hold `Cmd`/`Ctrl`/`Shift`/`Alt` while clicking an image link, or use the
 middle mouse button, to open it normally while leaving the viewer out of the
@@ -56,15 +57,13 @@ way.
 
 ## GitHub Enterprise
 
-The toolbar popup includes a quick on/off switch for the current site. To
-use the extension on a self-hosted **GitHub Enterprise** instance:
+To use the extension on a self-hosted **GitHub Enterprise** instance:
 
-1. Open the extension popup on that site.
-2. Choose **Manage sites…**, or right-click the extension icon and choose
-   **Options**.
-3. Add the Enterprise domain and approve Chrome's host permission request.
+1. Click the extension icon, or right-click it and choose **Options**, to
+  open the settings page.
+2. Add the Enterprise domain and approve Chrome's host permission request.
 
-You can disable or remove sites from the popup or options page at any time.
+You can disable or remove sites from the options page at any time.
 
 ## What counts as an eligible image
 
@@ -75,9 +74,6 @@ asset links, `user-images.githubusercontent.com`,
 and other `*.githubusercontent.com` hosts). Avatars and small icons are
 ignored so normal navigation isn't affected.
 
-Avatars and small icons are ignored so normal GitHub navigation is not
-affected.
-
 ## Project structure
 
 ```
@@ -85,7 +81,7 @@ github-image-preview/
 ├── manifest.json
 ├── icons/                  toolbar/extension icons
 ├── shared/
-│   └── ui.css              shared popup + options styling
+│   └── ui.css              shared settings-page styling
 └── src/
     ├── content/            injected into GitHub pages
     │   ├── constants.js    regexes, tunables, URL eligibility test
@@ -97,9 +93,6 @@ github-image-preview/
     │   └── styles.css      isolated, responsive lightbox styling
     ├── background/
     │   └── background.js   per-site state + dynamic registration for custom domains
-    ├── popup/
-    │   ├── popup.html
-    │   └── popup.js         toolbar popup — quick per-site toggle
     └── options/
         ├── options.html
         └── options.js       full site management page

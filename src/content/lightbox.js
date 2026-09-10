@@ -1,7 +1,3 @@
-/*
- * GHIP.Lightbox — the overlay itself: DOM, navigation, zoom/pan/pinch,
- * keyboard & touch input, and accessibility (focus trap, live region).
- */
 window.GHIP = window.GHIP || {};
 
 (function (NS) {
@@ -15,7 +11,7 @@ window.GHIP = window.GHIP || {};
 
   class Lightbox {
     constructor(state) {
-      this.state = state; // shared { enabled } flag from bootstrap.js
+      this.state = state;
       this.items = [];
       this.index = -1;
       this.scale = 1;
@@ -77,6 +73,8 @@ window.GHIP = window.GHIP || {};
               <span class="ghip-time"></span>
             </div>
           </div>
+
+          <div class="ghip-toast" role="status" hidden></div>
         </div>
       `;
       document.documentElement.appendChild(root);
@@ -93,6 +91,7 @@ window.GHIP = window.GHIP || {};
       this.zoomPctEl = root.querySelector(".ghip-zoom-pct");
       this.sectionPrevLabel = root.querySelector(".ghip-section-prev .ghip-section-label-btn");
       this.sectionNextLabel = root.querySelector(".ghip-section-next .ghip-section-label-btn");
+      this.toastEl = root.querySelector(".ghip-toast");
 
       root.querySelector(".ghip-close").addEventListener("click", () => this.close());
       root.querySelector(".ghip-prev").addEventListener("click", () => this.go(-1));
@@ -103,7 +102,6 @@ window.GHIP = window.GHIP || {};
       root.querySelector(".ghip-zoom-out").addEventListener("click", () => this.setZoom(this.scale - ZOOM_STEP));
       root.querySelector(".ghip-zoom-reset").addEventListener("click", () => this.resetZoom());
 
-      this.backdrop.addEventListener("click", () => this.close());
       this.imgWrap.addEventListener("click", (e) => {
         if (e.target !== this.img) return;
         if (this._didDrag) {
@@ -133,14 +131,17 @@ window.GHIP = window.GHIP || {};
         (e) => {
           if (!this.state.enabled) return;
           if (e.defaultPrevented) return;
-          if (e.button !== 0) return; // only plain left-click
-          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return; // keep native behavior
+          if (!this.root.hidden && this.root.contains(e.target)) return;
+          if (e.button !== 0) return;
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
           const target = e.target.closest("img, a[href]");
           if (!target) return;
           const url = extractUrlFromElement(target);
           if (!url || !githubImageHostTest(url)) return;
           if (target.tagName === "IMG" && looksLikeAvatarOrIcon(target)) return;
           e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
           this.openFromElement(target);
         },
         true
@@ -312,7 +313,66 @@ window.GHIP = window.GHIP || {};
       this.img.style.visibility = "hidden";
     }
 
-    // --- Zoom / pan -----------------------------------------------------
+    async _copyImage() {
+      const item = this.items[this.index];
+      if (!item) return;
+
+      if (!navigator.clipboard || !window.ClipboardItem) {
+        this._flashToast("Copy not supported in this browser", true);
+        return;
+      }
+
+      try {
+        const response = await fetch(item.url, { mode: "cors", credentials: "omit" });
+        if (!response.ok) throw new Error("Fetch failed: " + response.status);
+        const blob = await response.blob();
+        const pngBlob = await this._toPngBlob(blob);
+
+        await navigator.clipboard.write([
+          new ClipboardItem({ [pngBlob.type]: pngBlob }),
+        ]);
+        this._flashToast("Copied image");
+      } catch (err) {
+        console.error("GHIP: copy failed", err);
+        this._flashToast("Couldn't copy image", true);
+      }
+    }
+
+    _toPngBlob(blob) {
+      if (blob.type === "image/png") return Promise.resolve(blob);
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(blob);
+        const imgEl = new Image();
+        imgEl.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = imgEl.naturalWidth;
+          canvas.height = imgEl.naturalHeight;
+          canvas.getContext("2d").drawImage(imgEl, 0, 0);
+          canvas.toBlob((pngBlob) => {
+            URL.revokeObjectURL(url);
+            pngBlob ? resolve(pngBlob) : reject(new Error("Canvas conversion failed"));
+          }, "image/png");
+        };
+        imgEl.onerror = (e) => {
+          URL.revokeObjectURL(url);
+          reject(e);
+        };
+        imgEl.src = url;
+      });
+    }
+
+    _flashToast(message, isError) {
+      if (!this.toastEl) return;
+      this.toastEl.textContent = message;
+      this.toastEl.classList.toggle("ghip-toast-error", !!isError);
+      this.toastEl.hidden = false;
+      requestAnimationFrame(() => this.toastEl.classList.add("ghip-toast-visible"));
+      clearTimeout(this._toastTimer);
+      this._toastTimer = setTimeout(() => {
+        this.toastEl.classList.remove("ghip-toast-visible");
+        setTimeout(() => { this.toastEl.hidden = true; }, 200);
+      }, 1400);
+    }
 
     setZoom(scale, center) {
       const clamped = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, scale));
@@ -395,8 +455,6 @@ window.GHIP = window.GHIP || {};
       this._applyTransform();
     }
 
-    // --- Touch swipe & pinch-to-zoom --------------------------------------
-
     _onTouchStart(e) {
       if (e.touches.length === 2) {
         this.touchStartX = null;
@@ -444,10 +502,15 @@ window.GHIP = window.GHIP || {};
       else this.go(1);
     }
 
-    // --- Keyboard ---------------------------------------------------------
-
     _onKeyDown(e) {
       if (this.root.hidden) return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        this._copyImage();
+        return;
+      }
+
       switch (e.key) {
         case "Tab":
           this._onTabKey(e);
