@@ -1,0 +1,147 @@
+:root {
+  color-scheme: light dark;
+}
+body {
+  margin: 0;
+  width: 300px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  color: #e6edf3;
+  background: #0d1117;
+}
+header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  font-weight: 600;
+  border-bottom: 1px solid #30363d;
+}
+header img {
+  border-radius: 4px;
+}
+main {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+footer {
+  padding: 10px 14px;
+  border-top: 1px solid #30363d;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ghip-muted {
+  color: #8b949e;
+  margin: 0;
+}
+
+.ghip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ghip-host {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ghip-switch {
+  position: relative;
+  display: inline-block;
+  width: 38px;
+  height: 22px;
+  flex-shrink: 0;
+}
+.ghip-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.ghip-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: #30363d;
+  border-radius: 999px;
+  transition: background 0.15s ease;
+}
+.ghip-slider::before {
+  content: "";
+  position: absolute;
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  top: 3px;
+  background: #e6edf3;
+  border-radius: 50%;
+  transition: transform 0.15s ease;
+}
+.ghip-switch input:checked + .ghip-slider {
+  background: #238636;
+}
+.ghip-switch input:checked + .ghip-slider::before {
+  transform: translateX(16px);
+}
+.ghip-switch input:focus-visible + .ghip-slider {
+  outline: 2px solid #58a6ff;
+  outline-offset: 2px;
+}
+
+.ghip-btn {
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 6px;
+  border: 1px solid #30363d;
+  background: #21262d;
+  color: #e6edf3;
+  padding: 6px 12px;
+}
+.ghip-btn:hover {
+  background: #30363d;
+}
+.ghip-btn.ghip-primary {
+  background: #238636;
+  border-color: #2ea043;
+}
+.ghip-btn.ghip-primary:hover {
+  background: #2ea043;
+}
+.ghip-btn.ghip-danger {
+  background: transparent;
+  border-color: #30363d;
+  color: #f85149;
+}
+.ghip-btn.ghip-danger:hover {
+  background: rgba(248, 81, 73, 0.1);
+}
+.ghip-link-btn {
+  font: inherit;
+  color: #58a6ff;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.ghip-link-btn:hover {
+  text-decoration: underline;
+}
+
+.ghip-note {
+  font-size: 12px;
+  color: #8b949e;
+  line-height: 1.5;
+}
+
+.ghip-error {
+  font-size: 12px;
+  color: #f85149;
+  min-height: 16px;
+}

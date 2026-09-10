@@ -88,6 +88,7 @@
   justify-content: center;
   overflow: hidden;
   cursor: zoom-in;
+  touch-action: none;
 }
 .ghip-imgwrap.ghip-zoomed {
   cursor: grab;

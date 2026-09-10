@@ -1,244 +1,21 @@
 /*
- * GitHub Image Preview
- * In-page lightbox viewer for images on GitHub README, issue, PR, review,
- * and comment pages.
- *
- * Single-file content script (no build step required). Organized into
- * clearly separated sections mirroring: constants, github detection/
- * grouping, zoom/pan math, lightbox UI, and install/bootstrap.
+ * GHIP.Lightbox — the overlay itself: DOM, navigation, zoom/pan/pinch,
+ * keyboard & touch input, and accessibility (focus trap, live region).
  */
-(function () {
+window.GHIP = window.GHIP || {};
+
+(function (NS) {
   "use strict";
 
-  // ---------------------------------------------------------------------
-  // Guard against double-injection
-  // ---------------------------------------------------------------------
-  if (window.__ghImagePreviewInstalled) return;
-  window.__ghImagePreviewInstalled = true;
-
-  // ---------------------------------------------------------------------
-  // Constants
-  // ---------------------------------------------------------------------
-  const IMAGE_EXT_RE = /\.(apng|avif|bmp|gif|jpeg|jpg|png|svg|webp)(\?[^#]*)?(#.*)?$/i;
-
-  const GITHUB_IMAGE_HOST_TEST = (url) => {
-    let u;
-    try {
-      u = new URL(url, location.href);
-    } catch (e) {
-      return false;
-    }
-    const host = u.hostname;
-    const path = u.pathname;
-
-    if (IMAGE_EXT_RE.test(path)) return true;
-
-    if (host === "github.com") {
-      if (path.includes("/user-attachments/assets/")) return true;
-      if (/\/assets\/[^/]+\/?/.test(path)) return true;
-      return false;
-    }
-    if (host === "user-images.githubusercontent.com") return true;
-    if (host === "private-user-images.githubusercontent.com") return true;
-    if (host === "camo.githubusercontent.com") return true;
-    if (host.endsWith(".githubusercontent.com")) {
-      if (host === "avatars.githubusercontent.com") return false;
-      return true;
-    }
-    return false;
-  };
-
-  const ZOOM_MIN = 1;
-  const ZOOM_MAX = 8;
-  const ZOOM_STEP = 0.25;
-  const ZOOM_CLICK = 2.5;
-
-  const SWIPE_THRESHOLD = 50;
-
-  const SECTION_SELECTOR = [
-    "article#readme",
-    ".markdown-body",
-    ".TimelineItem",
-    ".review-comment",
-    ".js-comment-container",
-    ".js-timeline-item",
-    "[data-testid='comment-viewer-outer-box']",
-    "[data-testid='issue-body']",
-    "[data-testid='timeline-comment']",
-    "[data-ghip-group]",
-  ].join(",");
-
-  // ---------------------------------------------------------------------
-  // GitHub link detection, metadata extraction, grouping
-  // ---------------------------------------------------------------------
-
-  function looksLikeAvatarOrIcon(el) {
-    if (!el) return false;
-    const cls = (el.className && el.className.baseVal) || el.className || "";
-    if (typeof cls === "string" && /\bavatar\b|\bemoji\b|\boctinit\b|\bicon\b/i.test(cls)) return true;
-    const w = el.getAttribute && (el.getAttribute("width") || "");
-    const h = el.getAttribute && (el.getAttribute("height") || "");
-    const nw = parseInt(w, 10);
-    const nh = parseInt(h, 10);
-    if ((nw && nw <= 32) || (nh && nh <= 32)) return true;
-    const rect = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
-    if (rect && rect.width > 0 && rect.width <= 32 && rect.height <= 32) return true;
-    return false;
-  }
-
-  function extractUrlFromElement(el) {
-    if (el.tagName === "IMG") return el.currentSrc || el.src;
-    if (el.tagName === "A") return el.href;
-    return null;
-  }
-
-  function findEligibleTargets(root) {
-    const nodes = root.querySelectorAll("img, a[href]");
-    const results = [];
-    nodes.forEach((el) => {
-      const url = extractUrlFromElement(el);
-      if (!url) return;
-      if (!GITHUB_IMAGE_HOST_TEST(url)) return;
-      if (el.tagName === "IMG" && looksLikeAvatarOrIcon(el)) return;
-      if (el.tagName === "A") {
-        // Skip anchors wrapping avatars (profile pictures link to profiles)
-        const img = el.querySelector("img");
-        if (img && looksLikeAvatarOrIcon(img) && el.children.length === 1) return;
-      }
-      results.push(el);
-    });
-    return results;
-  }
-
-  function nearestSection(el) {
-    const found = el.closest(SECTION_SELECTOR);
-    return found || null;
-  }
-
-  function deriveCaption(el, url) {
-    let name = "";
-    if (el.tagName === "IMG") {
-      name = (el.getAttribute("alt") || "").trim();
-    } else {
-      name = (el.textContent || "").trim();
-    }
-    if (!name || name === url) {
-      try {
-        const u = new URL(url, location.href);
-        const seg = u.pathname.split("/").filter(Boolean).pop() || u.hostname;
-        name = decodeURIComponent(seg).replace(IMAGE_EXT_RE, (m) => m); // keep ext in filename
-      } catch (e) {
-        name = url;
-      }
-    }
-    return name;
-  }
-
-  function displayCaption(rawName) {
-    // Strip a trailing extension for the human-facing caption, keep filename separately.
-    return rawName.replace(/\.(apng|avif|bmp|gif|jpeg|jpg|png|svg|webp)$/i, "");
-  }
-
-  function findPostedTime(sectionEl) {
-    if (!sectionEl) return null;
-    const t = sectionEl.querySelector("relative-time, time");
-    if (!t) return null;
-    return t.getAttribute("datetime") || t.textContent || null;
-  }
-
-  function sectionLabel(sectionEl, idx) {
-    if (!sectionEl) return "Page";
-    if (sectionEl.matches("article#readme")) return "README";
-    const custom = sectionEl.getAttribute && sectionEl.getAttribute("data-ghip-group");
-    if (custom) return custom;
-    const author = sectionEl.querySelector(
-      ".author, [data-testid='comment-viewer-outer-box'] a[data-hovercard-type='user'], strong a"
-    );
-    const authorName = author ? author.textContent.trim() : "";
-    if (sectionEl.matches(".TimelineItem")) {
-      return authorName ? `Event by ${authorName}` : `Timeline event ${idx}`;
-    }
-    if (sectionEl.matches(".review-comment")) {
-      return authorName ? `Review by ${authorName}` : `Review comment ${idx}`;
-    }
-    if (authorName) return `Comment by ${authorName}`;
-    return `Section ${idx}`;
-  }
-
-  /**
-   * Scans the document for eligible images/links and builds an ordered,
-   * grouped collection describing everything the lightbox can navigate.
-   */
-  function collectItems() {
-    const targets = findEligibleTargets(document.body);
-    const sectionMap = new Map(); // sectionEl (or null) -> { label, items: [] }
-    const order = [];
-
-    targets.forEach((el) => {
-      const url = extractUrlFromElement(el);
-      const sectionEl = nearestSection(el);
-      const key = sectionEl || document.body;
-      if (!sectionMap.has(key)) {
-        order.push(key);
-        sectionMap.set(key, { sectionEl, items: [] });
-      }
-      const rawName = deriveCaption(el, url);
-      sectionMap.get(key).items.push({
-        el,
-        url,
-        rawName,
-        caption: displayCaption(rawName),
-      });
-    });
-
-    const sections = order.map((key, i) => {
-      const entry = sectionMap.get(key);
-      return {
-        sectionEl: entry.sectionEl,
-        label: sectionLabel(entry.sectionEl, i + 1),
-        postedTime: findPostedTime(entry.sectionEl),
-        items: entry.items,
-      };
-    });
-
-    // Flatten into a single global, ordered list with section indices.
-    const flat = [];
-    sections.forEach((sec, sIdx) => {
-      sec.items.forEach((item, iIdx) => {
-        flat.push({
-          ...item,
-          section: sec,
-          sectionIndex: sIdx,
-          indexInSection: iIdx,
-        });
-      });
-    });
-
-    return { sections, flat };
-  }
-
-  // ---------------------------------------------------------------------
-  // Zoom / pan math
-  // ---------------------------------------------------------------------
-
-  function clampPan(tx, ty, scale, containerRect, imgNaturalRect) {
-    // imgNaturalRect: the image's rendered (unscaled, base-fit) width/height
-    const scaledW = imgNaturalRect.width * scale;
-    const scaledH = imgNaturalRect.height * scale;
-    const maxX = Math.max(0, (scaledW - containerRect.width) / 2);
-    const maxY = Math.max(0, (scaledH - containerRect.height) / 2);
-    return {
-      x: Math.min(maxX, Math.max(-maxX, tx)),
-      y: Math.min(maxY, Math.max(-maxY, ty)),
-    };
-  }
-
-  // ---------------------------------------------------------------------
-  // Lightbox
-  // ---------------------------------------------------------------------
+  const { ZOOM_MIN, ZOOM_MAX, ZOOM_STEP, ZOOM_CLICK, SWIPE_THRESHOLD } = NS.CONSTANTS;
+  const { collectItems, extractUrlFromElement, looksLikeAvatarOrIcon } = NS;
+  const { clampPan, touchDist, touchMidpoint } = NS;
+  const ICONS = NS.ICONS;
+  const githubImageHostTest = NS.githubImageHostTest;
 
   class Lightbox {
-    constructor() {
+    constructor(state) {
+      this.state = state; // shared { enabled } flag from bootstrap.js
       this.items = [];
       this.index = -1;
       this.scale = 1;
@@ -290,7 +67,7 @@
             <button class="ghip-btn ghip-zoom-reset" aria-label="Reset zoom" title="Reset zoom (0)">${ICONS.reset}</button>
           </div>
 
-          <div class="ghip-caption">
+          <div class="ghip-caption" aria-live="polite">
             <div class="ghip-caption-main">
               <span class="ghip-filename"></span>
               <span class="ghip-counter"></span>
@@ -329,6 +106,10 @@
       this.backdrop.addEventListener("click", () => this.close());
       this.imgWrap.addEventListener("click", (e) => {
         if (e.target !== this.img) return;
+        if (this._didDrag) {
+          this._didDrag = false;
+          return;
+        }
         this._toggleClickZoom(e);
       });
 
@@ -338,7 +119,9 @@
       this.imgWrap.addEventListener("wheel", (e) => this._onWheel(e), { passive: false });
 
       this.imgWrap.addEventListener("touchstart", (e) => this._onTouchStart(e), { passive: true });
+      this.imgWrap.addEventListener("touchmove", (e) => this._onTouchMove(e), { passive: false });
       this.imgWrap.addEventListener("touchend", (e) => this._onTouchEnd(e), { passive: true });
+      this.imgWrap.addEventListener("touchcancel", (e) => this._onTouchEnd(e), { passive: true });
 
       this.img.addEventListener("load", () => this._onImgLoad());
       this.img.addEventListener("error", () => this._onImgError());
@@ -348,13 +131,14 @@
       document.addEventListener(
         "click",
         (e) => {
+          if (!this.state.enabled) return;
           if (e.defaultPrevented) return;
           if (e.button !== 0) return; // only plain left-click
           if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return; // keep native behavior
           const target = e.target.closest("img, a[href]");
           if (!target) return;
           const url = extractUrlFromElement(target);
-          if (!url || !GITHUB_IMAGE_HOST_TEST(url)) return;
+          if (!url || !githubImageHostTest(url)) return;
           if (target.tagName === "IMG" && looksLikeAvatarOrIcon(target)) return;
           e.preventDefault();
           this.openFromElement(target);
@@ -383,6 +167,33 @@
       this.root.hidden = false;
       requestAnimationFrame(() => this.root.classList.add("ghip-visible"));
       this._render(idx);
+      const closeBtn = this.root.querySelector(".ghip-close");
+      if (closeBtn) closeBtn.focus();
+    }
+
+    _focusableEls() {
+      return Array.from(this.root.querySelectorAll("button")).filter(
+        (el) => !el.disabled && el.offsetParent !== null
+      );
+    }
+
+    _onTabKey(e) {
+      const focusable = this._focusableEls();
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = this.root.getRootNode().activeElement || document.activeElement;
+      if (e.shiftKey) {
+        if (active === first || !this.root.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (active === last || !this.root.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     }
 
     close() {
@@ -442,7 +253,7 @@
     _render(idx) {
       this.index = idx;
       const item = this.items[idx];
-      this.resetZoom(true);
+      this.resetZoom();
       this.spinner.hidden = false;
       this.errorEl.hidden = true;
       this.img.style.visibility = "hidden";
@@ -453,19 +264,32 @@
       this.counterEl.textContent = `Image ${idx + 1} of ${this.items.length}`;
       const secCount = new Set(this.items.map((i) => i.sectionIndex)).size;
       this.sectionEl.textContent = `${item.section.label} (section ${item.sectionIndex + 1} of ${secCount})`;
-      this.timeEl.textContent = item.section.postedTime
-        ? this._formatTime(item.section.postedTime)
-        : "";
+      this.timeEl.textContent = item.section.postedTime ? this._formatTime(item.section.postedTime) : "";
 
       this._preload(idx + 1);
       this._preload(idx - 1);
+      this._updateSectionNavLabels(item);
+    }
+
+    _updateSectionNavLabels(item) {
+      const sections = [];
+      this.items.forEach((it) => {
+        if (!sections.find((s) => s.sectionIndex === it.sectionIndex)) {
+          sections.push({ sectionIndex: it.sectionIndex, label: it.section.label });
+        }
+      });
+      const curPos = sections.findIndex((s) => s.sectionIndex === item.sectionIndex);
+      const n = sections.length;
+      const prev = sections[(curPos - 1 + n) % n];
+      const next = sections[(curPos + 1) % n];
+      const truncate = (s) => (s.length > 22 ? s.slice(0, 21) + "\u2026" : s);
+      this.sectionPrevLabel.textContent = n > 1 ? truncate(prev.label) : "Section";
+      this.sectionNextLabel.textContent = n > 1 ? truncate(next.label) : "Section";
     }
 
     _formatTime(raw) {
       const d = new Date(raw);
-      if (!isNaN(d.getTime())) {
-        return d.toLocaleString();
-      }
+      if (!isNaN(d.getTime())) return d.toLocaleString();
       return raw;
     }
 
@@ -473,9 +297,8 @@
       if (!this.items.length) return;
       const n = this.items.length;
       const wrapped = ((idx % n) + n) % n;
-      const url = this.items[wrapped].url;
       const img = new Image();
-      img.src = url;
+      img.src = this.items[wrapped].url;
     }
 
     _onImgLoad() {
@@ -506,21 +329,17 @@
       }
 
       this.scale = clamped;
-      const clampedPan = clampPan(this.pan.x, this.pan.y, this.scale, containerRect, baseRect);
-      this.pan = clampedPan;
+      this.pan = clampPan(this.pan.x, this.pan.y, this.scale, containerRect, baseRect);
       this._applyTransform();
     }
 
-    resetZoom(silent) {
+    resetZoom() {
       this.scale = 1;
       this.pan = { x: 0, y: 0 };
-      if (!silent) this._applyTransform();
-      else this._applyTransform();
+      this._applyTransform();
     }
 
     _baseImgRect() {
-      // The image is scaled to fit the wrap via CSS (object-fit: contain
-      // semantics achieved through max-width/max-height); measure it.
       const r = this.img.getBoundingClientRect();
       return { width: r.width / this.scale || r.width, height: r.height / this.scale || r.height };
     }
@@ -532,11 +351,8 @@
     }
 
     _toggleClickZoom(e) {
-      if (this.scale > 1) {
-        this.resetZoom();
-      } else {
-        this.setZoom(ZOOM_CLICK, { x: e.clientX, y: e.clientY });
-      }
+      if (this.scale > 1) this.resetZoom();
+      else this.setZoom(ZOOM_CLICK, { x: e.clientX, y: e.clientY });
     }
 
     _onWheel(e) {
@@ -549,6 +365,7 @@
     _onDragStart(e) {
       if (this.scale <= 1) return;
       this.dragging = true;
+      this._didDrag = false;
       this.dragStart = { x: e.clientX, y: e.clientY, panX: this.pan.x, panY: this.pan.y };
       this.imgWrap.classList.add("ghip-dragging");
     }
@@ -557,6 +374,7 @@
       if (!this.dragging) return;
       const dx = e.clientX - this.dragStart.x;
       const dy = e.clientY - this.dragStart.y;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) this._didDrag = true;
       const containerRect = this.imgWrap.getBoundingClientRect();
       const baseRect = this._baseImgRect();
       this.pan = clampPan(this.dragStart.panX + dx, this.dragStart.panY + dy, this.scale, containerRect, baseRect);
@@ -577,21 +395,53 @@
       this._applyTransform();
     }
 
-    // --- Touch swipe ------------------------------------------------------
+    // --- Touch swipe & pinch-to-zoom --------------------------------------
 
     _onTouchStart(e) {
-      if (e.touches.length !== 1) return;
-      this.touchStartX = e.touches[0].clientX;
+      if (e.touches.length === 2) {
+        this.touchStartX = null;
+        this.touchStartY = null;
+        this._pinchLastDist = touchDist(e.touches[0], e.touches[1]);
+        return;
+      }
+      if (e.touches.length === 1) {
+        this._pinchLastDist = null;
+        this.touchStartX = e.touches[0].clientX;
+        this.touchStartY = e.touches[0].clientY;
+      }
+    }
+
+    _onTouchMove(e) {
+      if (e.touches.length === 2 && this._pinchLastDist != null) {
+        e.preventDefault();
+        const dist = touchDist(e.touches[0], e.touches[1]);
+        const ratio = dist / this._pinchLastDist;
+        this._pinchLastDist = dist;
+        const mid = touchMidpoint(e.touches[0], e.touches[1]);
+        this.setZoom(this.scale * ratio, mid);
+      }
     }
 
     _onTouchEnd(e) {
+      if (e.touches.length > 0) {
+        this._pinchLastDist = null;
+        this.touchStartX = null;
+        this.touchStartY = null;
+        return;
+      }
+      this._pinchLastDist = null;
       if (this.touchStartX == null) return;
-      const endX = (e.changedTouches && e.changedTouches[0].clientX) || this.touchStartX;
+      const t = e.changedTouches && e.changedTouches[0];
+      const endX = t ? t.clientX : this.touchStartX;
+      const endY = t ? t.clientY : this.touchStartY;
       const dx = endX - this.touchStartX;
+      const dy = endY - this.touchStartY;
       this.touchStartX = null;
-      if (this.scale > 1) return; // don't hijack panning gestures
-      if (dx > SWIPE_THRESHOLD) this.go(-1);
-      else if (dx < -SWIPE_THRESHOLD) this.go(1);
+      this.touchStartY = null;
+      if (this.scale > 1) return;
+      if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      if (dx > 0) this.go(-1);
+      else this.go(1);
     }
 
     // --- Keyboard ---------------------------------------------------------
@@ -599,6 +449,9 @@
     _onKeyDown(e) {
       if (this.root.hidden) return;
       switch (e.key) {
+        case "Tab":
+          this._onTabKey(e);
+          break;
         case "Escape":
           this.close();
           break;
@@ -629,31 +482,5 @@
     }
   }
 
-  // ---------------------------------------------------------------------
-  // Icons
-  // ---------------------------------------------------------------------
-  const ICONS = {
-    close:
-      '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"></path></svg>',
-    chevronLeft:
-      '<svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor"><path d="M9.78 12.78a.75.75 0 0 1-1.06 0L4.47 8.53a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 1.06L6.06 8l3.72 3.72a.75.75 0 0 1 0 1.06Z"></path></svg>',
-    chevronRight:
-      '<svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor"><path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"></path></svg>',
-    plus:
-      '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8 2a.75.75 0 0 1 .75.75V7.25h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5V2.75A.75.75 0 0 1 8 2Z"></path></svg>',
-    minus:
-      '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M2.75 7.25a.75.75 0 0 0 0 1.5h10.5a.75.75 0 0 0 0-1.5H2.75Z"></path></svg>',
-    reset:
-      '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8 2.5a5.5 5.5 0 1 0 5.28 7h-1.57a4 4 0 1 1-.66-4.24L9.5 6.81 14 7V2.5l-1.66 1.66A5.48 5.48 0 0 0 8 2.5Z"></path></svg>',
-  };
-
-  // ---------------------------------------------------------------------
-  // Bootstrap
-  // ---------------------------------------------------------------------
-  let lightbox = null;
-  function ensureLightbox() {
-    if (!lightbox) lightbox = new Lightbox();
-    return lightbox;
-  }
-  ensureLightbox();
-})();
+  NS.Lightbox = Lightbox;
+})(window.GHIP);

@@ -1,18 +1,42 @@
 {
   "manifest_version": 3,
   "name": "GitHub Image Preview",
-  "version": "1.0.0",
-  "description": "In-page lightbox viewer for images in GitHub READMEs, issues, pull requests, reviews, and comments.",
+  "version": "1.1.0",
+  "description": "In-page lightbox viewer for images in GitHub READMEs, issues, pull requests, reviews, and comments. Works on github.com out of the box, with optional per-site control for GitHub Enterprise instances.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
+  "permissions": ["storage", "scripting"],
+  "optional_host_permissions": ["https://*/*"],
+  "background": {
+    "service_worker": "src/background/background.js"
+  },
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_ui": {
+    "page": "src/options/options.html",
+    "open_in_tab": true
+  },
   "content_scripts": [
     {
       "matches": ["https://github.com/*"],
-      "css": ["styles.css"],
-      "js": ["script.js"],
+      "css": ["src/content/styles.css"],
+      "js": [
+        "src/content/constants.js",
+        "src/content/github.js",
+        "src/content/zoom.js",
+        "src/content/icons.js",
+        "src/content/lightbox.js",
+        "src/content/bootstrap.js"
+      ],
       "run_at": "document_idle"
     }
   ]
