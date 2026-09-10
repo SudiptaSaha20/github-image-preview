@@ -28,11 +28,12 @@ setup program, install Node.js, or use the command line.
 
 ### 1. Get the extension folder
 
-On the GitHub page for this project, click the green **Code** button, choose
-**Download ZIP**, and save the file to your computer. Open the downloaded ZIP
-file and choose **Extract All**. Then copy the extracted project folder to a
-permanent location on your computer. If someone gave you the project as a ZIP
-file, use the same extraction steps.
+Open the project's [Releases](https://github.com/SudiptaSaha20/github-image-preview/releases)
+page and download the latest extension ZIP file from the release assets. Save
+it to your computer, open the downloaded ZIP file, and choose **Extract All**.
+Then copy the extracted project folder to a permanent location on your
+computer. If someone gave you the project as a ZIP file, use the same
+extraction steps.
 
 Chrome cannot install the extension directly from a ZIP file, so make sure it
 is extracted first.
