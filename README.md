@@ -28,10 +28,14 @@ setup program, install Node.js, or use the command line.
 
 ### 1. Get the extension folder
 
-Download the project as a ZIP file and extract it, or copy the project folder
-to a permanent location on your computer. If you downloaded a ZIP file, make
-sure you extract it first; Chrome cannot install the extension directly from a
-ZIP file.
+On the GitHub page for this project, click the green **Code** button, choose
+**Download ZIP**, and save the file to your computer. Open the downloaded ZIP
+file and choose **Extract All**. Then copy the extracted project folder to a
+permanent location on your computer. If someone gave you the project as a ZIP
+file, use the same extraction steps.
+
+Chrome cannot install the extension directly from a ZIP file, so make sure it
+is extracted first.
 
 You should be able to open the folder and see `manifest.json` directly inside
 it. If you see another folder first, open that folder when selecting it in the
