@@ -143,3 +143,7 @@ No analytics. No telemetry. `github.com` is enabled by default and needs no
 extra permission. Adding a custom Enterprise domain requests host access
 only for that specific domain, used solely to load the same content script
 there. Nothing is sent off-device; everything runs locally in the tab.
+
+## License
+
+This project is available under the [MIT License](LICENSE).
