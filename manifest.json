@@ -12,7 +12,7 @@
     {
       "matches": ["https://github.com/*"],
       "css": ["styles.css"],
-      "js": ["content.js"],
+      "js": ["script.js"],
       "run_at": "document_idle"
     }
   ]
