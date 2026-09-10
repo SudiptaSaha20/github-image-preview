@@ -1,16 +1,3 @@
-/*
- * GitHub Image Preview — background service worker.
- *
- * Responsibilities:
- *  - Own the `ghip_sites` storage record: { [hostname]: { enabled, builtin } }
- *  - github.com is "builtin" — always injected via the static content_script
- *    entry in manifest.json; the enabled flag just turns it on/off at runtime.
- *  - Any other ("custom") hostname requires an explicit host-permission grant
- *    (requested from the options page, which runs with a user gesture)
- *    plus a dynamically registered content script, since manifest.json only
- *    declares github.com statically.
- */
-
 const BUILTIN_HOST = "github.com";
 const STORAGE_KEY = "ghip_sites";
 
@@ -36,8 +23,6 @@ chrome.runtime.onInstalled.addListener(async () => {
   await setSites(sites);
 });
 
-// No popup on the toolbar icon anymore — clicking it just opens the
-// options page, which already has full "manage sites" functionality.
 chrome.action.onClicked.addListener(() => {
   chrome.runtime.openOptionsPage();
 });
@@ -60,7 +45,6 @@ async function addCustomSite(hostname) {
   }
 
   try {
-    // Replace any stale registration for this id first (idempotent add).
     const existing = await chrome.scripting.getRegisteredContentScripts({ ids: [registrationId(hostname)] });
     if (existing.length) {
       await chrome.scripting.unregisterContentScripts({ ids: [registrationId(hostname)] });
@@ -98,12 +82,12 @@ async function removeCustomSite(hostname) {
   try {
     await chrome.scripting.unregisterContentScripts({ ids: [registrationId(hostname)] });
   } catch (e) {
-    // Not registered — fine, continue with cleanup.
+    
   }
   try {
     await chrome.permissions.remove({ origins: [`https://${hostname}/*`] });
   } catch (e) {
-    // Ignore — permission may be shared/already gone.
+    
   }
 
   const sites = await getSites();
@@ -146,5 +130,5 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         sendResponse({ ok: false, error: "Unknown message" });
     }
   })();
-  return true; // keep the message channel open for the async response
+  return true;
 });
